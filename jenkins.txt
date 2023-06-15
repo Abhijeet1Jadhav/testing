@@ -1,0 +1,96 @@
+Jenkins:
+-------------------------------------------------------
+sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+
+sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+
+yum install java-11*
+find / -iname *openjdk*
+
+jdk path : /usr/lib/jvm/java-11-openjdk
+
+vi ~/.bash_profile
+
+    JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+    M2_HOME=/opt/maven/apache-maven-3.9.1
+    M2=/opt/maven/apache-maven-3.9.1/bin
+
+PATH=$PATH:$JAVA_HOME:$M2_HOME:$M2:/usr/bin/git
+
+export PATH
+
+yum install jenkins
+
+------------------------------------------------------------------
+
+Maven
+-----------------------------------------------------------------
+mkdir /opt/maven
+cd /opt/maven
+wget https://dlcdn.apache.org/maven/maven-3/3.9.1/binaries/apache-maven-3.9.1-bin.tar.gz
+tar -xvzf apache-maven-3.9.1-bin.tar.gz
+
+vi ~/.bash_profile -- add M2_Home path from above line.
+
+--------------------------------------------------------------------
+
+Tomcat
+---------------------------------------------------------------------
+wget https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.87/bin/apache-tomcat-8.5.87.tar.gz
+tar -xvzf apache-tomcat-8.5.87.tar.gz
+find / -iname *context.xml*
+Need to modify below.
+vi /home/ec2-user/apache-tomcat-8.5.87/webapps/host-manager/META-INF/context.xml
+vi /home/ec2-user/apache-tomcat-8.5.87/webapps/manager/META-INF/context.xml
+
+"<!--" "-->" add this at the start and at end where valve is written
+
+vi /conf/tomcat_user.xml
+
+add below lines at the end of file.
+-------------------
+  <role rolename="manager-gui"/>
+  <role rolename="manager-script"/>
+  <role rolename="manager-jmx"/>
+  <role rolename="manager-status"/>
+  <user username="admin" password="admin" roles="manager-gui, manager-script, manager-jmx, manager-status"/>
+  <user username="deployer" password="deployer" roles="manager-script"/>
+  <user username="tomcat" password="s3cret" roles="manager-gui"/>
+
+after every change, go to /bin and run ./shutdown.sh and /.startup.sh
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Jenkins Master-slave
+
+Setup Jenkins Slave
+Install java ( yum install java-11*)
+# Create user and add the user to wheel group
+useradd slave2
+# Create SSH Keys
+sudo su - jenkins-slave-01
+ssh-keygen -t rsa -N "" -f /home/slv2/.ssh/id_rsa
+
+# The private and public keys will be created at these locations `/home/jenkins-slave-01/.ssh/id_rsa` and `/home/jenkins-slave-01/.ssh/id_rsa.pub`
+cd .ssh
+cat id_rsa.pub > authorized_keys
+chmod 700 authorized_keys
+
+
+Configuration on Master
+Copy the slave node's public key[id_rsa.pub] to Master Node's known_hosts file
+
+mkdir -p /var/lib/jenkins/.ssh
+cd /var/lib/jenkins/.ssh
+ssh-keyscan -H SLAVE-NODE-IP-OR-HOSTNAME >>/var/lib/jenkins/.ssh/known_hosts
+# ssh-keyscan -H 172.31.38.42 >>/var/lib/jenkins/.ssh/known_hosts
+chown jenkins:jenkins known_hosts
+chmod 700 known_hosts
+
+
+https://github.com/miztiik/DevOps-Demos/tree/master/setup-jenkins-plugins
+
+
